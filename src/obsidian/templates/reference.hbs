@@ -1,0 +1,40 @@
+---
+citekey: "{{citekey}}"
+title: "{{title}}"
+authors:
+{{#each authors}}  - "{{this}}"
+{{/each}}year: {{year}}
+{{#if journal}}journal: "{{journal}}"
+{{/if}}{{#if booktitle}}booktitle: "{{booktitle}}"
+{{/if}}{{#if doi}}doi: "{{doi}}"
+{{/if}}tags:
+  - paper
+  - read/unread
+{{#each tags}}  - {{this}}
+{{/each}}date-added: {{today}}
+---
+
+# {{title}}
+
+**Authors:** {{authorsInline}}
+**Year:** {{year}}
+**Venue:** {{venue}}
+{{#if doi}}**DOI:** [{{doi}}](https://doi.org/{{doi}})
+{{/if}}{{#if url}}**URL:** {{url}}
+{{/if}}
+
+## Abstract
+
+{{#if abstract}}{{abstract}}{{else}}_No abstract available._{{/if}}
+
+## Notes
+
+> [!note] Links
+> - [[{{citekey}}_body|Full Text (PDF → Markdown)]]
+> - [[{{citekey}}_summary|Structured Summary]]
+
+## BibTeX
+
+```bibtex
+{{rawBibtex}}
+```

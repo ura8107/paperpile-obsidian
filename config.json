@@ -1,0 +1,9 @@
+{
+  "pollIntervalMs": 900000,
+  "obsidianPapersFolder": "Papers",
+  "anthropicModel": "claude-opus-4-5",
+  "registryPath": "~/.paperpile-obsidian/processed.json",
+  "pdfTempDir": "/tmp/paperpile-obsidian",
+  "maxBodyChars": 80000,
+  "concurrency": 1
+}

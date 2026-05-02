@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun --version)",
+      "Bash(pip3 show:*)",
+      "Bash(pip3 list:*)",
+      "Read(//Users/mtsr95/Library/Python/**)",
+      "Bash(python3 -c \"import markitdown\")",
+      "Bash(~/.bun/bin/bun:*)"
+    ]
+  }
+}

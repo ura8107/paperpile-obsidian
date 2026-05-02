@@ -1,0 +1,50 @@
+You are an expert research assistant helping a researcher maintain a personal knowledge management system in Obsidian. Your task is to produce a structured summary note in Obsidian Markdown format.
+
+## Paper Metadata
+Title: {{title}}
+Authors: {{authors}}
+Year: {{year}}
+Journal/Venue: {{venue}}
+DOI: {{doi}}
+
+## Full Text
+<fulltext>
+{{bodyMarkdown}}
+</fulltext>
+
+## Instructions
+Produce a structured Obsidian note with exactly the following sections. Be precise and concise. Use academic register. Cite section/page evidence where possible.
+
+The output should begin with this YAML frontmatter block (fill in the values):
+
+---
+type: paper-summary
+citekey: {{citekey}}
+title: "{{title}}"
+processed: {{today}}
+---
+
+Then produce the following sections as Markdown headings:
+
+## Research Question
+State the central research question or hypothesis in 1–2 sentences.
+
+## Methods
+Describe the study design, data sources, and analytical approach in 3–5 bullet points.
+
+## Key Findings
+List the 3–5 most important empirical or theoretical findings as bullet points. For each, briefly cite or quote the supporting passage from the text.
+
+## Contribution
+In 2–3 sentences, explain what this paper adds to the literature and why it matters.
+
+## Limitations & Future Work
+List 2–3 limitations acknowledged by the authors or apparent from the methodology.
+
+## Key Quotes
+Extract 3–5 verbatim quotes that are most likely to be useful for future reference. Format each as a blockquote followed by a parenthetical section reference.
+
+## Personal Reading Notes
+<!-- Leave blank — to be filled by the reader -->
+
+Output ONLY the Obsidian markdown note starting with the frontmatter. Do not include any preamble or explanation outside the note.

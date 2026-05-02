@@ -1,6 +1,5 @@
 import { fetchPdf } from "./drive/paperpileSync.ts";
 import { pdfToMarkdown } from "./pdf/converter.ts";
-import { generateSummary } from "./llm/summarizer.ts";
 import { buildReferenceNote } from "./obsidian/referenceNote.ts";
 import { writeNotes } from "./obsidian/noteWriter.ts";
 import { markProcessed } from "./bibtex/registry.ts";
@@ -8,62 +7,58 @@ import { unlinkSync, existsSync } from "fs";
 import type { PaperEntry } from "./types.ts";
 
 /**
- * Run the full pipeline for a single paper entry:
+ * Run the automatic pipeline for a single paper entry:
  *  1. Download PDF from Google Drive
  *  2. Convert PDF to Markdown (markitdown → pypdf fallback)
- *  3. Generate LLM structured summary
- *  4. Build reference note from metadata
- *  5. Write all three files to Obsidian vault
- *  6. Mark as processed in registry
+ *  3. Build reference note from metadata
+ *  4. Write reference note + body to Obsidian vault
+ *  5. Mark as processed in registry
+ *
+ * Note: LLM summary is NOT generated here — use the /summarize-paper
+ * Claude Code skill on demand when you want a summary.
  */
 export async function processPaper(entry: PaperEntry): Promise<void> {
   console.log(`\n[pipeline] Processing: ${entry.citekey} — "${entry.title}"`);
 
   let pdfPath: string | null = null;
   let bodyMarkdown: string | null = null;
-  let summaryMarkdown: string | null = null;
 
-  // Step 1: Download PDF
   try {
-    pdfPath = await fetchPdf(entry);
-  } catch (err) {
-    console.warn(`[pipeline] PDF download failed for ${entry.citekey}: ${(err as Error).message}`);
-  }
-
-  // Step 2: Convert PDF → Markdown
-  if (pdfPath) {
+    // Step 1: Download PDF
     try {
-      bodyMarkdown = await pdfToMarkdown(pdfPath);
+      pdfPath = await fetchPdf(entry);
     } catch (err) {
-      console.warn(`[pipeline] PDF conversion failed for ${entry.citekey}: ${(err as Error).message}`);
+      console.warn(`[pipeline] PDF download failed for ${entry.citekey}: ${(err as Error).message}`);
     }
-  }
 
-  // Step 3: Generate LLM summary (requires body markdown)
-  if (bodyMarkdown) {
-    try {
-      summaryMarkdown = await generateSummary(entry, bodyMarkdown);
-    } catch (err) {
-      console.warn(`[pipeline] LLM summary failed for ${entry.citekey}: ${(err as Error).message}`);
+    // Step 2: Convert PDF to Markdown
+    if (pdfPath) {
+      try {
+        bodyMarkdown = await pdfToMarkdown(pdfPath);
+      } catch (err) {
+        console.warn(`[pipeline] PDF conversion failed for ${entry.citekey}: ${(err as Error).message}`);
+      }
     }
-  } else {
-    console.warn(`[pipeline] Skipping LLM summary for ${entry.citekey} — no body text available`);
+
+    // Step 3+4: Build and write reference note, body, and summary placeholder
+    const referenceNote = buildReferenceNote(entry);
+    const result = await writeNotes(entry, referenceNote, bodyMarkdown);
+
+    // Step 5: Mark as processed
+    await markProcessed(entry.citekey, result.vaultRelativePath);
+    console.log(`[pipeline] Done: ${entry.citekey} -> ${result.vaultRelativePath}`);
+    console.log(`[pipeline] To generate a summary: use /summarize-paper ${entry.citekey} in Claude Code`);
+  } finally {
+    cleanupTempPdf(pdfPath);
   }
+}
 
-  // Step 4+5: Build and write reference note (always succeeds)
-  const referenceNote = buildReferenceNote(entry);
-  const result = await writeNotes(entry, referenceNote, bodyMarkdown, summaryMarkdown);
-
-  // Step 6: Mark as processed
-  await markProcessed(entry.citekey, result.vaultRelativePath);
-  console.log(`[pipeline] Done: ${entry.citekey} → ${result.vaultRelativePath}`);
-
-  // Cleanup temp PDF
+function cleanupTempPdf(pdfPath: string | null): void {
   if (pdfPath && existsSync(pdfPath)) {
     try {
       unlinkSync(pdfPath);
-    } catch {
-      // Non-fatal cleanup failure
+    } catch (err) {
+      console.warn(`[pipeline] Temp PDF cleanup failed for ${pdfPath}: ${(err as Error).message}`);
     }
   }
 }

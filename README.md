@@ -1,12 +1,12 @@
 # paperpile-obsidian
 
-Automated Paperpile → Obsidian PKM integration. When a new paper is added to Paperpile, this workflow produces three Obsidian notes:
+Automated Paperpile -> Obsidian PKM integration. When a new paper is added to Paperpile, this workflow produces three Obsidian notes:
 
 | File | Contents |
 |------|----------|
 | `Papers/Smith2023/Smith2023.md` | Reference note — YAML metadata, abstract, BibTeX, wikilinks |
 | `Papers/Smith2023/Smith2023_body.md` | Full-text PDF converted to Markdown via markitdown |
-| `Papers/Smith2023/Smith2023_summary.md` | LLM-structured summary (research question, methods, findings, key quotes) |
+| `Papers/Smith2023/Smith2023_summary.md` | Summary placeholder for on-demand generation |
 
 ## How It Works
 
@@ -14,11 +14,10 @@ A polling daemon checks Paperpile's Google Drive BibTeX file every 15 minutes, d
 
 ```
 Google Drive (paperpile.bib + PDFs)
-  → Parse BibTeX metadata
-  → Download PDF → markitdown → body.md
-  → Claude API → summary.md
-  → Write all 3 files to Obsidian vault
-  → Mark as processed
+  -> Parse BibTeX metadata
+  -> Download PDF -> markitdown -> body.md
+  -> Write reference, body, and summary-placeholder notes to Obsidian vault
+  -> Mark as processed
 ```
 
 ## Setup
@@ -49,10 +48,9 @@ cp .env.example .env
 ```
 
 Required values:
-- `ANTHROPIC_API_KEY` — from console.anthropic.com
 - `OBSIDIAN_VAULT_PATH` — absolute path to your Obsidian vault
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`
-- `DRIVE_PAPERPILE_FOLDER_ID` — find in Paperpile settings → Google Drive sync
+- `DRIVE_PAPERPILE_FOLDER_ID` — find in Paperpile settings -> Google Drive sync
 - `DRIVE_BIB_FILE_ID` — open `paperpile.bib` in Google Drive, copy ID from URL
 
 ### 4. Verify setup
@@ -92,13 +90,13 @@ bun --watch run src/index.ts daemon   # Dev mode with hot reload
 ```
 src/
   index.ts           CLI entry point
+  cli.ts             CLI command dispatcher
   pipeline.ts        Single-paper processing orchestrator
   config.ts          Config loading and validation
   types.ts           TypeScript interfaces
   bibtex/            BibTeX parsing and processed-entry registry
   drive/             Google Drive API client and Paperpile sync
-  pdf/               PDF → Markdown conversion (markitdown + fallback)
-  llm/               Claude API client and summary generator
+  pdf/               PDF to Markdown conversion (markitdown + fallback)
   obsidian/          Note builder and vault writer
   daemon/            Polling loop
 scripts/

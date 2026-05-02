@@ -27,11 +27,9 @@ export interface AppConfig {
   drivePaperpileFolderId: string;
   driveBibFileId: string;
   pollIntervalMs: number;
-  anthropicModel: string;
   obsidianPapersFolder: string;
   registryPath: string;
   pdfTempDir: string;
-  maxBodyChars: number;
   concurrency: number;
 }
 

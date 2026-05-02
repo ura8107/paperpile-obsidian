@@ -10,7 +10,6 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.92.0",
     "bibtex-parse": "^2.1.0",
     "googleapis": "^144.0.0",
     "handlebars": "^4.7.8",

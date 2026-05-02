@@ -7,14 +7,12 @@ const configFileDefaults = JSON.parse(
 );
 
 const envSchema = z.object({
-  ANTHROPIC_API_KEY: z.string().min(1),
   OBSIDIAN_VAULT_PATH: z.string().min(1),
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
   GOOGLE_REFRESH_TOKEN: z.string().min(1),
   DRIVE_PAPERPILE_FOLDER_ID: z.string().min(1),
   DRIVE_BIB_FILE_ID: z.string().min(1),
-  ANTHROPIC_MODEL: z.string().optional(),
   POLL_INTERVAL_MS: z.string().optional(),
   REGISTRY_PATH: z.string().optional(),
   OBSIDIAN_PAPERS_FOLDER: z.string().optional(),
@@ -49,11 +47,9 @@ export function loadConfig(): AppConfig {
     pollIntervalMs: env.POLL_INTERVAL_MS
       ? parseInt(env.POLL_INTERVAL_MS, 10)
       : configFileDefaults.pollIntervalMs,
-    anthropicModel: env.ANTHROPIC_MODEL ?? configFileDefaults.anthropicModel,
     obsidianPapersFolder: env.OBSIDIAN_PAPERS_FOLDER ?? configFileDefaults.obsidianPapersFolder,
     registryPath: expandTilde(env.REGISTRY_PATH ?? configFileDefaults.registryPath),
     pdfTempDir: expandTilde(env.PDF_TEMP_DIR ?? configFileDefaults.pdfTempDir),
-    maxBodyChars: configFileDefaults.maxBodyChars,
     concurrency: configFileDefaults.concurrency,
   };
 }

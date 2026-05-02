@@ -29,18 +29,3 @@ export async function pdfToMarkdown(pdfPath: string): Promise<string | null> {
 
   return null;
 }
-
-/**
- * Truncate body markdown to fit within the LLM token budget.
- * Strategy: keep first 30% + last 20% to preserve abstract/intro and conclusion.
- */
-export function truncateBody(body: string, maxChars: number): string {
-  if (body.length <= maxChars) return body;
-
-  const headChars = Math.floor(maxChars * 0.6);
-  const tailChars = Math.floor(maxChars * 0.4);
-
-  const head = body.slice(0, headChars);
-  const tail = body.slice(-tailChars);
-  return `${head}\n\n[... middle of document truncated for length ...]\n\n${tail}`;
-}

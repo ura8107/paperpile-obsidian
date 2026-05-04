@@ -11,11 +11,8 @@ import type { PaperEntry } from "./types.ts";
  *  1. Download PDF from Google Drive
  *  2. Convert PDF to Markdown (markitdown → pypdf fallback)
  *  3. Build reference note from metadata
- *  4. Write reference note + body to Obsidian vault
+ *  4. Write reference note + body note to Obsidian vault
  *  5. Mark as processed in registry
- *
- * Note: LLM summary is NOT generated here — use the /summarize-paper
- * Claude Code skill on demand when you want a summary.
  */
 export async function processPaper(entry: PaperEntry): Promise<void> {
   console.log(`\n[pipeline] Processing: ${entry.citekey} — "${entry.title}"`);
@@ -40,14 +37,13 @@ export async function processPaper(entry: PaperEntry): Promise<void> {
       }
     }
 
-    // Step 3+4: Build and write reference note, body, and summary placeholder
+    // Step 3+4: Build and write reference note and body note
     const referenceNote = buildReferenceNote(entry);
     const result = await writeNotes(entry, referenceNote, bodyMarkdown);
 
     // Step 5: Mark as processed
     await markProcessed(entry.citekey, result.vaultRelativePath);
     console.log(`[pipeline] Done: ${entry.citekey} -> ${result.vaultRelativePath}`);
-    console.log(`[pipeline] To generate a summary: use /summarize-paper ${entry.citekey} in Claude Code`);
   } finally {
     cleanupTempPdf(pdfPath);
   }

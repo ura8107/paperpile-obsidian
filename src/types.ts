@@ -16,6 +16,11 @@ export interface PaperEntry {
 export interface ProcessedEntry {
   processedAt: string;   // ISO timestamp
   vaultPath: string;     // relative path within vault
+  syncedAt?: string;     // ISO timestamp of last sync pass
+  bibtexHash?: string;
+  pdfDriveId?: string;
+  pdfModifiedTime?: string;
+  bodyStatus?: "converted" | "missing" | "failed";
 }
 
 export interface ProcessedRegistry {

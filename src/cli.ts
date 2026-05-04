@@ -4,6 +4,8 @@ import { fetchBibFile } from "./drive/paperpileSync.ts";
 import { parseBibTeX, diffNewEntries } from "./bibtex/parser.ts";
 import { processPaper } from "./pipeline.ts";
 import { startPoller } from "./daemon/poller.ts";
+import { createSyncSummary, syncPaper } from "./sync.ts";
+import { migratePaperFolders } from "./migration.ts";
 
 export async function runCli(argv: string[]): Promise<void> {
   const [command, ...args] = argv;
@@ -15,11 +17,82 @@ export async function runCli(argv: string[]): Promise<void> {
     case "process":
       await cmdProcess(args);
       break;
+    case "sync":
+      await cmdSync(args);
+      break;
+    case "migrate-folders":
+      await cmdMigrateFolders(args);
+      break;
     case "status":
       await cmdStatus();
       break;
     default:
       printUsage();
+  }
+}
+
+async function cmdMigrateFolders(args: string[]): Promise<void> {
+  await loadRegistry();
+
+  const dryRun = args.includes("--dry-run");
+  const summary = await migratePaperFolders({ dryRun });
+
+  console.log("\n=== migration summary ===");
+  console.log(`Moved:            ${summary.moved}`);
+  console.log(`Conflicts:        ${summary.conflicts}`);
+  console.log(`Empty dirs:       ${summary.skipped}`);
+  console.log(`Registry updated: ${summary.registryUpdated}`);
+  if (dryRun) {
+    console.log("Dry run only. Re-run without --dry-run to apply.");
+  }
+}
+
+async function cmdSync(args: string[]): Promise<void> {
+  await loadRegistry();
+
+  const limit = parseLimit(args);
+  const delayMs = parseDelayMs(args);
+  const bibRaw = await fetchBibFile();
+  const allEntries = parseBibTeX(bibRaw);
+  const entries = limit ? allEntries.slice(0, limit) : allEntries;
+  const summary = createSyncSummary();
+  const failedCitekeys: string[] = [];
+
+  console.log(`[sync] Found ${allEntries.length} entries in Paperpile.`);
+  if (limit) {
+    console.log(`[sync] Limiting this run to ${limit} entries.`);
+  }
+  if (delayMs > 0) {
+    console.log(`[sync] Waiting ${delayMs}ms between entries.`);
+  }
+
+  for (const [index, entry] of entries.entries()) {
+    console.log(`[sync] [${index + 1}/${entries.length}] ${entry.citekey}`);
+    try {
+      const result = await syncPaper(entry);
+      summary[result]++;
+      if (result !== "unchanged") {
+        console.log(`[sync] ${result}: ${entry.citekey}`);
+      }
+    } catch (err) {
+      summary.failed++;
+      failedCitekeys.push(entry.citekey);
+      console.error(`[sync] Failed: ${entry.citekey}: ${(err as Error).message}`);
+    }
+
+    if (delayMs > 0 && index < entries.length - 1) {
+      await sleep(delayMs);
+    }
+  }
+
+  console.log("\n=== sync summary ===");
+  console.log(`Created:          ${summary.created}`);
+  console.log(`Updated metadata: ${summary.updatedMetadata}`);
+  console.log(`Updated body:     ${summary.updatedBody}`);
+  console.log(`Unchanged:        ${summary.unchanged}`);
+  console.log(`Failed:           ${summary.failed}`);
+  if (failedCitekeys.length > 0) {
+    console.log(`Failed citekeys:  ${failedCitekeys.join(", ")}`);
   }
 }
 
@@ -125,6 +198,32 @@ function fail(message: string): never {
   process.exit(1);
 }
 
+function parseLimit(args: string[]): number | undefined {
+  const index = args.indexOf("--limit");
+  if (index === -1) return undefined;
+
+  const value = Number(args[index + 1]);
+  if (!Number.isInteger(value) || value < 1) {
+    fail("Usage: bun run src/index.ts sync [--limit <count>]");
+  }
+  return value;
+}
+
+function parseDelayMs(args: string[]): number {
+  const index = args.indexOf("--delay-ms");
+  if (index === -1) return 0;
+
+  const value = Number(args[index + 1]);
+  if (!Number.isInteger(value) || value < 1) {
+    fail("Usage: bun run src/index.ts sync [--limit <count>] [--delay-ms <milliseconds>]");
+  }
+  return value;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function printUsage(): void {
   console.log(`paperpile-obsidian - Paperpile to Obsidian PKM integration
 
@@ -132,6 +231,11 @@ Usage:
   bun run src/index.ts daemon               Start polling daemon
   bun run src/index.ts process <citekey>    Process one paper from Drive
   bun run src/index.ts process --bib <file> Process papers from local .bib file
+  bun run src/index.ts sync                 Create/update all papers from Drive
+  bun run src/index.ts sync --limit <count> Sync only the first N entries
+  bun run src/index.ts sync --delay-ms 5000 Sync all entries with a delay between papers
+  bun run src/index.ts migrate-folders      Move legacy paper folders into library folders
+  bun run src/index.ts migrate-folders --dry-run
   bun run src/index.ts status               Show processed/pending summary
 
 Setup:

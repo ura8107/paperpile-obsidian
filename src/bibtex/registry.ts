@@ -27,11 +27,33 @@ export function getProcessedKeys(): Set<string> {
   return new Set(Object.keys(registry));
 }
 
-export async function markProcessed(citekey: string, vaultPath: string): Promise<void> {
+export async function markProcessed(
+  citekey: string,
+  vaultPath: string,
+  updates: Partial<ProcessedEntry> = {}
+): Promise<void> {
   if (!loaded) throw new Error("Registry not loaded.");
   registry[citekey] = {
+    ...registry[citekey],
     processedAt: new Date().toISOString(),
     vaultPath,
+    ...updates,
+  };
+  await Bun.write(config.registryPath, JSON.stringify(registry, null, 2));
+}
+
+export async function markSynced(
+  citekey: string,
+  vaultPath: string,
+  updates: Partial<ProcessedEntry>
+): Promise<void> {
+  if (!loaded) throw new Error("Registry not loaded.");
+  registry[citekey] = {
+    ...registry[citekey],
+    processedAt: registry[citekey]?.processedAt ?? new Date().toISOString(),
+    vaultPath,
+    ...updates,
+    syncedAt: new Date().toISOString(),
   };
   await Bun.write(config.registryPath, JSON.stringify(registry, null, 2));
 }

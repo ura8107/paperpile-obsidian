@@ -1,12 +1,14 @@
 # paperpile-obsidian
 
-Automated Paperpile -> Obsidian PKM integration. When a new paper is added to Paperpile, this workflow produces three Obsidian notes:
+Automated Paperpile -> Obsidian PKM integration. When a new paper is added to Paperpile, this workflow stores paper material in separate library folders:
 
 | File | Contents |
 |------|----------|
-| `Papers/Smith2023/Smith2023.md` | Reference note — YAML metadata, abstract, BibTeX, wikilinks |
-| `Papers/Smith2023/Smith2023_body.md` | Full-text PDF converted to Markdown via markitdown |
-| `Papers/Smith2023/Smith2023_summary.md` | Summary placeholder for on-demand generation |
+| `Papers/References/Smith2023.md` | Reference note — YAML metadata, abstract, BibTeX, wikilinks |
+| `Papers/Bodies/Smith2023_body.md` | Full-text PDF converted to Markdown via markitdown |
+| `Papers/Summaries/Smith2023_summary.md` | User-created paper notes and summaries |
+
+Reference and body notes keep citekey-based Obsidian wikilinks, so notes remain navigable even though they are no longer stored in one folder per paper.
 
 ## How It Works
 
@@ -16,7 +18,7 @@ A polling daemon checks Paperpile's Google Drive BibTeX file every 15 minutes, d
 Google Drive (paperpile.bib + PDFs)
   -> Parse BibTeX metadata
   -> Download PDF -> markitdown -> body.md
-  -> Write reference, body, and summary-placeholder notes to Obsidian vault
+  -> Write reference and body notes to Obsidian vault
   -> Mark as processed
 ```
 
@@ -64,6 +66,19 @@ bun run src/index.ts status
 ```bash
 # Process one paper (good for testing)
 bun run src/index.ts process Smith2023
+
+# Sync all Paperpile entries: create missing notes, update changed metadata/PDF bodies
+bun run src/index.ts sync
+
+# Sync all entries gently, waiting between papers to reduce Google Drive API load
+bun run src/index.ts sync --delay-ms 5000
+
+# Sync only the first N entries for a small test run
+bun run src/index.ts sync --limit 10
+
+# Move legacy `Papers/<citekey>/` folders into the current library layout
+bun run src/index.ts migrate-folders --dry-run
+bun run src/index.ts migrate-folders
 
 # Start the polling daemon
 bun run src/index.ts daemon

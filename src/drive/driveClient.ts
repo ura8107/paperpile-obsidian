@@ -13,9 +13,11 @@ auth.setCredentials({
 const drive = google.drive({ version: "v3", auth });
 
 export async function downloadFile(fileId: string): Promise<Buffer> {
-  const res = await drive.files.get(
-    { fileId, alt: "media" },
-    { responseType: "arraybuffer" }
+  const res = await withDriveRetry(() =>
+    drive.files.get(
+      { fileId, alt: "media" },
+      { responseType: "arraybuffer" }
+    )
   );
   return Buffer.from(res.data as ArrayBuffer);
 }
@@ -42,12 +44,14 @@ export async function listFolder(
   let pageToken: string | undefined;
 
   do {
-    const res = await drive.files.list({
-      q,
-      fields: "nextPageToken, files(id, name, mimeType, modifiedTime)",
-      pageSize: 1000,
-      pageToken,
-    });
+    const res = await withDriveRetry(() =>
+      drive.files.list({
+        q,
+        fields: "nextPageToken, files(id, name, mimeType, modifiedTime)",
+        pageSize: 1000,
+        pageToken,
+      })
+    );
     for (const f of res.data.files ?? []) {
       if (f.id && f.name && f.mimeType) {
         files.push({
@@ -65,10 +69,12 @@ export async function listFolder(
 }
 
 export async function getFileMetadata(fileId: string): Promise<DriveFile> {
-  const res = await drive.files.get({
-    fileId,
-    fields: "id, name, mimeType, modifiedTime",
-  });
+  const res = await withDriveRetry(() =>
+    drive.files.get({
+      fileId,
+      fields: "id, name, mimeType, modifiedTime",
+    })
+  );
   const f = res.data;
   return {
     id: f.id!,
@@ -76,4 +82,49 @@ export async function getFileMetadata(fileId: string): Promise<DriveFile> {
     mimeType: f.mimeType!,
     modifiedTime: f.modifiedTime ?? undefined,
   };
+}
+
+async function withDriveRetry<T>(operation: () => Promise<T>): Promise<T> {
+  const delays = [2000, 5000, 10000];
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      return await operation();
+    } catch (err) {
+      lastError = err;
+      if (attempt === delays.length || !isRetryableDriveError(err)) {
+        throw err;
+      }
+
+      const delayMs = delays[attempt];
+      console.warn(`[drive] Temporary API error, retrying in ${delayMs}ms: ${(err as Error).message}`);
+      await sleep(delayMs);
+    }
+  }
+
+  throw lastError;
+}
+
+function isRetryableDriveError(err: unknown): boolean {
+  const status = getErrorStatus(err);
+  if (status && [403, 429, 500, 502, 503, 504].includes(status)) {
+    return true;
+  }
+
+  const code = (err as { code?: string })?.code;
+  return code === "ECONNRESET" || code === "ETIMEDOUT" || code === "ENOTFOUND";
+}
+
+function getErrorStatus(err: unknown): number | undefined {
+  const maybeError = err as {
+    code?: number;
+    response?: { status?: number };
+    status?: number;
+  };
+  return maybeError.response?.status ?? maybeError.status ?? maybeError.code;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

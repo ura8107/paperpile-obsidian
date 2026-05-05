@@ -84,7 +84,46 @@ bun run src/index.ts migrate-folders
 bun run src/index.ts daemon
 ```
 
-### 6. Auto-start on login (macOS)
+### 6. Summarize papers with the local Codex skill
+
+This repository includes a local Codex skill for structured paper summaries:
+
+```
+.codex/skills/paper-summarizer/
+```
+
+For Codex to discover it as a reusable skill, expose it from a configured skill root. A symlink keeps the skill local to this repository while making it discoverable:
+
+```bash
+ln -s "$(pwd)/.codex/skills/paper-summarizer" ~/.codex/skills/paper-summarizer
+```
+
+Use it from Codex with a Paperpile citekey:
+
+```text
+$paper-summarizer Smith2023
+Smith2023 の本文を構造化要約して
+```
+
+The skill is scoped to this Paperpile -> Obsidian workflow. It resolves the citekey against the configured Obsidian vault and reads:
+
+| File | Role |
+|------|------|
+| `Papers/References/Smith2023.md` | Metadata, abstract, BibTeX, DOI, tags |
+| `Papers/Bodies/Smith2023_body.md` | Main full-text evidence for the summary |
+| `Papers/Summaries/Smith2023_summary.md` | Markdown output file for the structured summary |
+
+The helper resolver can be run directly for debugging:
+
+```bash
+python3 .codex/skills/paper-summarizer/scripts/resolve_paper.py Smith2023
+```
+
+The skill saves the generated Markdown summary to `Papers/Summaries/<citekey>_summary.md` by default. It does not search Google Scholar, generate new citation keys, or summarize arbitrary PDFs by default. It preserves the existing Paperpile citekey and uses the local converted body note as the source of truth. If no body note exists, it reports that the full text is unavailable and falls back to metadata/abstract-only summarization.
+
+If the Obsidian vault is outside Codex's writable workspace, Codex may need write approval before it can create or update the summary file. A sandbox failure usually appears as `Operation not permitted` even when normal macOS file permissions look correct.
+
+### 7. Auto-start on login (macOS)
 
 ```bash
 cp launchd/com.paperpile-obsidian.plist ~/Library/LaunchAgents/
@@ -118,6 +157,9 @@ scripts/
   setup-google-oauth.ts   One-time OAuth2 token setup
   pdf_fallback.py         pypdf fallback converter
   install-markitdown.sh   markitdown installation helper
+.codex/
+  skills/
+    paper-summarizer/     Local citekey-based paper summary skill
 launchd/
   com.paperpile-obsidian.plist   macOS auto-start config
 ```

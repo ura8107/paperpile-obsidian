@@ -1,0 +1,6 @@
+interface:
+  display_name: "Paper Summarizer"
+  short_description: "Summarize local Paperpile paper bodies"
+  default_prompt: "Use $paper-summarizer to summarize this citekey from my local Paperpile Obsidian library."
+policy:
+  allow_implicit_invocation: true

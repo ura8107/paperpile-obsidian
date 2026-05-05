@@ -114,7 +114,7 @@ async function writeSyncedBody(
     pdfPath = await downloadPdfFile(entry, pdfFile);
     const bodyMarkdown = await pdfToMarkdown(pdfPath);
     await writeBodyNote(entry, bodyMarkdown);
-    return "converted";
+    return bodyMarkdown ? "converted" : "missing";
   } catch (err) {
     console.warn(`[sync] PDF body update failed for ${entry.citekey}: ${(err as Error).message}`);
     return "failed";

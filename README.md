@@ -39,7 +39,7 @@ pip3 install markitdown[all]
 4. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`
 5. Run the OAuth setup script to get a refresh token:
    ```bash
-   bun run scripts/setup-google-oauth.ts
+   bun run oauth
    ```
 
 ### 3. Configure `.env`
@@ -68,7 +68,7 @@ bun run src/index.ts status
 bun run src/index.ts process Smith2023
 
 # Sync all Paperpile entries: create missing notes, update changed metadata/PDF bodies
-bun run src/index.ts sync
+bun run sync
 
 # Sync all entries gently, waiting between papers to reduce Google Drive API load
 bun run src/index.ts sync --delay-ms 5000
@@ -126,7 +126,7 @@ If the Obsidian vault is outside Codex's writable workspace, Codex may need writ
 ### 7. Auto-start on login (macOS)
 
 ```bash
-cp launchd/com.paperpile-obsidian.plist ~/Library/LaunchAgents/
+cp config/launchd/com.paperpile-obsidian.plist ~/Library/LaunchAgents/
 launchctl load ~/Library/LaunchAgents/com.paperpile-obsidian.plist
 ```
 
@@ -142,6 +142,10 @@ bun --watch run src/index.ts daemon   # Dev mode with hot reload
 ## Project Structure
 
 ```
+README.md             Setup and usage guide
+package.json          Bun commands and dependencies
+bun.lock              Locked dependency versions
+tsconfig.json         TypeScript compiler settings
 src/
   index.ts           CLI entry point
   cli.ts             CLI command dispatcher
@@ -153,13 +157,14 @@ src/
   pdf/               PDF to Markdown conversion (markitdown + fallback)
   obsidian/          Note builder and vault writer
   daemon/            Polling loop
-scripts/
+config/
+  defaults.json      App defaults overridden by .env values
+  launchd/           macOS auto-start config
+tools/
   setup-google-oauth.ts   One-time OAuth2 token setup
   pdf_fallback.py         pypdf fallback converter
   install-markitdown.sh   markitdown installation helper
 .codex/
   skills/
     paper-summarizer/     Local citekey-based paper summary skill
-launchd/
-  com.paperpile-obsidian.plist   macOS auto-start config
 ```

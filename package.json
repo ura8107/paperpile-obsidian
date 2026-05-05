@@ -7,6 +7,8 @@
     "dev": "bun --watch run src/index.ts daemon",
     "process": "bun run src/index.ts process",
     "status": "bun run src/index.ts status",
+    "sync": "bun run src/index.ts sync",
+    "oauth": "bun run tools/setup-google-oauth.ts",
     "test": "bun test"
   },
   "dependencies": {

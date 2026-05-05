@@ -3,7 +3,7 @@ import { resolve } from "path";
 import type { AppConfig } from "./types.ts";
 
 const configFileDefaults = JSON.parse(
-  await Bun.file(new URL("../config.json", import.meta.url).pathname).text()
+  await Bun.file(new URL("../config/defaults.json", import.meta.url).pathname).text()
 );
 
 const envSchema = z.object({

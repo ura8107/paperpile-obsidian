@@ -8,7 +8,7 @@
  *   3. Create OAuth2 credentials (Desktop app type)
  *   4. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env
  *
- * Run: bun run scripts/setup-google-oauth.ts
+ * Run: bun run oauth
  * Then copy the printed GOOGLE_REFRESH_TOKEN value into your .env file.
  */
 

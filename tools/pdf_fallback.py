@@ -3,7 +3,7 @@
 Fallback PDF-to-Markdown converter using pypdf.
 Used when markitdown is unavailable or fails.
 
-Usage: python3 pdf_fallback.py <path/to/file.pdf>
+Usage: python3 tools/pdf_fallback.py <path/to/file.pdf>
 Output: Markdown text to stdout
 """
 

@@ -17,6 +17,7 @@ const envSchema = z.object({
   REGISTRY_PATH: z.string().optional(),
   OBSIDIAN_PAPERS_FOLDER: z.string().optional(),
   PDF_TEMP_DIR: z.string().optional(),
+  MARKITDOWN_BIN: z.string().optional(),
 });
 
 function parseEnv() {
@@ -50,6 +51,7 @@ export function loadConfig(): AppConfig {
     obsidianPapersFolder: env.OBSIDIAN_PAPERS_FOLDER ?? configFileDefaults.obsidianPapersFolder,
     registryPath: expandTilde(env.REGISTRY_PATH ?? configFileDefaults.registryPath),
     pdfTempDir: expandTilde(env.PDF_TEMP_DIR ?? configFileDefaults.pdfTempDir),
+    markitdownBin: env.MARKITDOWN_BIN ? expandTilde(env.MARKITDOWN_BIN) : "markitdown",
     concurrency: configFileDefaults.concurrency,
   };
 }

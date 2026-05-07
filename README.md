@@ -4,9 +4,9 @@ Automated Paperpile -> Obsidian PKM integration. When a new paper is added to Pa
 
 | File | Contents |
 |------|----------|
-| `Papers/References/Smith2023.md` | Reference note — YAML metadata, abstract, BibTeX, wikilinks |
-| `Papers/Bodies/Smith2023_body.md` | Full-text PDF converted to Markdown via markitdown |
-| `Papers/Summaries/Smith2023_summary.md` | User-created paper notes and summaries |
+| `Papers/References/Acemoglu2019-br.md` | Reference note — YAML metadata, abstract, BibTeX, wikilinks |
+| `Papers/Bodies/Acemoglu2019-br_body.md` | Full-text PDF converted to Markdown via markitdown |
+| `Papers/Summaries/Acemoglu2019-br_summary.md` | User-created paper notes and summaries |
 
 Reference and body notes keep citekey-based Obsidian wikilinks, so notes remain navigable even though they are no longer stored in one folder per paper.
 
@@ -64,8 +64,8 @@ bun run src/index.ts status
 ### 5. Run
 
 ```bash
-# Process one paper (good for testing)
-bun run src/index.ts process Smith2023
+# Process one paper by Paperpile citekey (good for testing)
+bun run src/index.ts process Acemoglu2019-br
 
 # Sync all Paperpile entries: create missing notes, update changed metadata/PDF bodies
 bun run sync
@@ -101,22 +101,22 @@ ln -s "$(pwd)/.codex/skills/paper-summarizer" ~/.codex/skills/paper-summarizer
 Use it from Codex with a Paperpile citekey:
 
 ```text
-$paper-summarizer Smith2023
-Smith2023 の本文を構造化要約して
+$paper-summarizer Acemoglu2019-br
+Acemoglu2019-br の本文を構造化要約して
 ```
 
 The skill is scoped to this Paperpile -> Obsidian workflow. It resolves the citekey against the configured Obsidian vault and reads:
 
 | File | Role |
 |------|------|
-| `Papers/References/Smith2023.md` | Metadata, abstract, BibTeX, DOI, tags |
-| `Papers/Bodies/Smith2023_body.md` | Main full-text evidence for the summary |
-| `Papers/Summaries/Smith2023_summary.md` | Markdown output file for the structured summary |
+| `Papers/References/Acemoglu2019-br.md` | Metadata, abstract, BibTeX, DOI, tags |
+| `Papers/Bodies/Acemoglu2019-br_body.md` | Main full-text evidence for the summary |
+| `Papers/Summaries/Acemoglu2019-br_summary.md` | Markdown output file for the structured summary |
 
 The helper resolver can be run directly for debugging:
 
 ```bash
-python3 .codex/skills/paper-summarizer/scripts/resolve_paper.py Smith2023
+python3 .codex/skills/paper-summarizer/scripts/resolve_paper.py Acemoglu2019-br
 ```
 
 The skill saves the generated Markdown summary to `Papers/Summaries/<citekey>_summary.md` by default. It does not search Google Scholar, generate new citation keys, or summarize arbitrary PDFs by default. It preserves the existing Paperpile citekey and uses the local converted body note as the source of truth. If no body note exists, it reports that the full text is unavailable and falls back to metadata/abstract-only summarization.

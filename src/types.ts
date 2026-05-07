@@ -35,6 +35,7 @@ export interface AppConfig {
   obsidianPapersFolder: string;
   registryPath: string;
   pdfTempDir: string;
+  markitdownBin: string;
   concurrency: number;
 }
 

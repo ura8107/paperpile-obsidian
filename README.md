@@ -10,6 +10,14 @@ Automated Paperpile -> Obsidian PKM integration. When a new paper is added to Pa
 
 Reference and body notes keep citekey-based Obsidian wikilinks, so notes remain navigable even though they are no longer stored in one folder per paper.
 
+## Data Privacy
+
+This repository is intended to contain the sync tool, configuration defaults, and fictional examples only. Your actual Paperpile/Obsidian library data should stay outside Git.
+
+The generated `Papers/` or local `paperpile-data/` folders may contain copyrighted PDF text, personal notes, private reading history, and research interests. They are ignored by `.gitignore` and should not be committed.
+
+Use `OBSIDIAN_VAULT_PATH` in `.env` to point the workflow at your own Obsidian vault, preferably outside this repository. The `examples/` directory contains fictional sample notes that show the expected output layout without exposing a real paper library.
+
 ## How It Works
 
 A polling daemon checks Paperpile's Google Drive BibTeX file every 15 minutes, detects new citekeys, and runs the pipeline:
@@ -164,6 +172,8 @@ tools/
   setup-google-oauth.ts   One-time OAuth2 token setup
   pdf_fallback.py         pypdf fallback converter
   install-markitdown.sh   markitdown installation helper
+examples/
+  Papers/                 Fictional sample Obsidian output, safe to commit
 .codex/
   skills/
     paper-summarizer/     Local citekey-based paper summary skill

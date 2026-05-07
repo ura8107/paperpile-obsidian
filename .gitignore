@@ -4,3 +4,9 @@ node_modules/
 *.log
 /tmp/
 dist/
+
+# Local Paperpile/Obsidian library data. These files may contain copyrighted
+# PDF text, personal notes, private reading history, and research interests.
+paperpile-data/
+/Papers/
+*.pdf

@@ -52,13 +52,20 @@ async function cmdSync(args: string[]): Promise<void> {
 
   const limit = parseLimit(args);
   const delayMs = parseDelayMs(args);
+  const pendingOnly = args.includes("--pending-only");
   const bibRaw = await fetchBibFile();
   const allEntries = parseBibTeX(bibRaw);
-  const entries = limit ? allEntries.slice(0, limit) : allEntries;
+  const candidateEntries = pendingOnly
+    ? allEntries.filter((entry) => !getProcessedKeys().has(entry.citekey))
+    : allEntries;
+  const entries = limit ? candidateEntries.slice(0, limit) : candidateEntries;
   const summary = createSyncSummary();
   const failedCitekeys: string[] = [];
 
   console.log(`[sync] Found ${allEntries.length} entries in Paperpile.`);
+  if (pendingOnly) {
+    console.log(`[sync] Processing ${candidateEntries.length} pending entries only.`);
+  }
   if (limit) {
     console.log(`[sync] Limiting this run to ${limit} entries.`);
   }
@@ -204,7 +211,7 @@ function parseLimit(args: string[]): number | undefined {
 
   const value = Number(args[index + 1]);
   if (!Number.isInteger(value) || value < 1) {
-    fail("Usage: bun run src/index.ts sync [--limit <count>]");
+    fail("Usage: bun run src/index.ts sync [--limit <count>] [--pending-only]");
   }
   return value;
 }
@@ -215,7 +222,7 @@ function parseDelayMs(args: string[]): number {
 
   const value = Number(args[index + 1]);
   if (!Number.isInteger(value) || value < 1) {
-    fail("Usage: bun run src/index.ts sync [--limit <count>] [--delay-ms <milliseconds>]");
+    fail("Usage: bun run src/index.ts sync [--limit <count>] [--delay-ms <milliseconds>] [--pending-only]");
   }
   return value;
 }
@@ -233,6 +240,7 @@ Usage:
   bun run src/index.ts process --bib <file> Process papers from local .bib file
   bun run src/index.ts sync                 Create/update all papers from Drive
   bun run src/index.ts sync --limit <count> Sync only the first N entries
+  bun run src/index.ts sync --pending-only  Sync only entries missing from the registry
   bun run src/index.ts sync --delay-ms 5000 Sync all entries with a delay between papers
   bun run src/index.ts migrate-folders      Move legacy paper folders into library folders
   bun run src/index.ts migrate-folders --dry-run

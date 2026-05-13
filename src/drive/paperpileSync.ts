@@ -68,24 +68,61 @@ async function findPdfInDrive(entry: PaperEntry): Promise<DriveFile | null> {
     .pop()
     ?.toLowerCase() ?? "";
   const year = entry.year;
+  const titleWords = significantTitleWords(entry.title);
 
   // Score each file by keyword matches
   const scored = pdfFiles.map((f) => {
     const lower = f.name.toLowerCase();
     let score = 0;
-    if (firstAuthorLastName && lower.includes(firstAuthorLastName)) score += 2;
-    if (year && lower.includes(year)) score += 2;
+    const authorMatched = Boolean(firstAuthorLastName && lower.includes(firstAuthorLastName));
+    const yearMatched = Boolean(year && lower.includes(year));
+    let titleMatches = 0;
+
+    if (authorMatched) score += 3;
+    if (yearMatched) score += 2;
     // Also check title words
-    const titleWords = entry.title.toLowerCase().split(/\s+/).filter((w) => w.length > 4);
     for (const word of titleWords.slice(0, 5)) {
-      if (lower.includes(word)) score += 1;
+      if (lower.includes(word)) {
+        titleMatches++;
+        score += 1;
+      }
     }
-    return { file: f, score };
+    return { file: f, score, authorMatched, yearMatched, titleMatches };
   });
 
   const best = scored.sort((a, b) => b.score - a.score)[0];
-  if (!best || best.score < 2) return null;
+  if (!best || best.score < 5) return null;
+  if (!best.yearMatched) return null;
+  if (!best.authorMatched && best.titleMatches < 2) return null;
+  if (titleWords.length > 0 && best.titleMatches < Math.min(2, titleWords.length)) return null;
   return best.file;
+}
+
+function significantTitleWords(title: string): string[] {
+  const stopwords = new Set([
+    "about",
+    "after",
+    "against",
+    "among",
+    "between",
+    "during",
+    "from",
+    "into",
+    "more",
+    "than",
+    "that",
+    "their",
+    "them",
+    "with",
+    "within",
+  ]);
+
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .map((word) => word.replace(/^-+|-+$/g, ""))
+    .filter((word) => word.length > 4 && !stopwords.has(word));
 }
 
 async function listPaperpilePdfFiles(): Promise<DriveFile[]> {

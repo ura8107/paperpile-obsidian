@@ -87,7 +87,7 @@ function shouldUpdateBody(
   if (!bodyExists) return true;
   const bodyStatus = previous?.bodyStatus ?? inferredBodyStatus;
 
-  if (!pdfFile) return false;
+  if (!pdfFile) return Boolean(previous?.pdfDriveId);
   if (bodyStatus !== "converted") return true;
   if (!previous?.pdfDriveId && !previous?.pdfModifiedTime) return false;
   if (previous.pdfDriveId !== pdfFile.id) return true;

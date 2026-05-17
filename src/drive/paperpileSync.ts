@@ -92,8 +92,8 @@ async function findPdfInDrive(entry: PaperEntry): Promise<DriveFile | null> {
 
   const best = scored.sort((a, b) => b.score - a.score)[0];
   if (!best || best.score < 5) return null;
+  if (!best.authorMatched) return null;
   if (!best.yearMatched) return null;
-  if (!best.authorMatched && best.titleMatches < 2) return null;
   if (titleWords.length > 0 && best.titleMatches < Math.min(2, titleWords.length)) return null;
   return best.file;
 }

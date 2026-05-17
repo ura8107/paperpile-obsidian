@@ -156,8 +156,16 @@ async function cmdStatus(): Promise<void> {
   await loadRegistry();
 
   const registry = getAllEntries();
-  const processedCount = Object.keys(registry).length;
-  const totalCount = await getPaperpileEntryCount();
+  const paperpileEntries = await getPaperpileEntries();
+  const totalCount = paperpileEntries.length;
+  const processedKeys = getProcessedKeys();
+  const paperpileKeys = new Set(paperpileEntries.map((entry) => entry.citekey));
+  const processedCurrentCount = paperpileEntries.filter((entry) =>
+    processedKeys.has(entry.citekey)
+  ).length;
+  const registryOnlyCount = Object.keys(registry).filter(
+    (citekey) => !paperpileKeys.has(citekey)
+  ).length;
 
   console.log("\n=== paperpile-obsidian status ===");
   console.log(`Vault:         ${config.vaultPath}`);
@@ -166,24 +174,27 @@ async function cmdStatus(): Promise<void> {
   console.log(`Poll interval: ${config.pollIntervalMs / 60000} min`);
   console.log("");
 
-  if (totalCount > 0) {
+  if (paperpileEntries.length > 0) {
     console.log(`Total in Paperpile: ${totalCount}`);
-    console.log(`Processed:          ${processedCount}`);
-    console.log(`Pending:            ${totalCount - processedCount}`);
+    console.log(`Processed:          ${processedCurrentCount}`);
+    console.log(`Pending:            ${totalCount - processedCurrentCount}`);
+    if (registryOnlyCount > 0) {
+      console.log(`Registry-only:      ${registryOnlyCount}`);
+    }
   } else {
-    console.log(`Processed: ${processedCount}`);
+    console.log(`Processed: ${Object.keys(registry).length}`);
   }
 
   printRecentlyProcessed(registry);
 }
 
-async function getPaperpileEntryCount(): Promise<number> {
+async function getPaperpileEntries() {
   try {
     const bibRaw = await fetchBibFile();
-    return parseBibTeX(bibRaw).length;
+    return parseBibTeX(bibRaw);
   } catch (err) {
     console.warn(`Could not fetch BibTeX from Drive: ${(err as Error).message}`);
-    return 0;
+    return [];
   }
 }
 

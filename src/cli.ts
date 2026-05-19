@@ -1,4 +1,5 @@
 import { config } from "./config.ts";
+import { existsSync } from "node:fs";
 import { loadRegistry, getProcessedKeys, getAllEntries } from "./bibtex/registry.ts";
 import { fetchBibFile } from "./drive/paperpileSync.ts";
 import { parseBibTeX, diffNewEntries } from "./bibtex/parser.ts";
@@ -6,6 +7,8 @@ import { processPaper } from "./pipeline.ts";
 import { startPoller } from "./daemon/poller.ts";
 import { createSyncSummary, syncPaper } from "./sync.ts";
 import { migratePaperFolders } from "./migration.ts";
+import { getPaperPaths } from "./obsidian/noteWriter.ts";
+import type { PaperEntry, ProcessedRegistry } from "./types.ts";
 
 export async function runCli(argv: string[]): Promise<void> {
   const [command, ...args] = argv;
@@ -53,11 +56,14 @@ async function cmdSync(args: string[]): Promise<void> {
   const limit = parseLimit(args);
   const delayMs = parseDelayMs(args);
   const pendingOnly = args.includes("--pending-only");
+  const incompleteOnly = args.includes("--incomplete-only");
   const bibRaw = await fetchBibFile();
   const allEntries = parseBibTeX(bibRaw);
-  const candidateEntries = pendingOnly
-    ? allEntries.filter((entry) => !getProcessedKeys().has(entry.citekey))
-    : allEntries;
+  const registry = getAllEntries();
+  const processedKeys = getProcessedKeys();
+  const candidateEntries = allEntries.filter((entry) =>
+    shouldSyncEntry(entry, registry, processedKeys, { pendingOnly, incompleteOnly })
+  );
   const entries = limit ? candidateEntries.slice(0, limit) : candidateEntries;
   const summary = createSyncSummary();
   const failedCitekeys: string[] = [];
@@ -65,6 +71,9 @@ async function cmdSync(args: string[]): Promise<void> {
   console.log(`[sync] Found ${allEntries.length} entries in Paperpile.`);
   if (pendingOnly) {
     console.log(`[sync] Processing ${candidateEntries.length} pending entries only.`);
+  }
+  if (incompleteOnly) {
+    console.log(`[sync] Processing ${candidateEntries.length} incomplete entries only.`);
   }
   if (limit) {
     console.log(`[sync] Limiting this run to ${limit} entries.`);
@@ -101,6 +110,30 @@ async function cmdSync(args: string[]): Promise<void> {
   if (failedCitekeys.length > 0) {
     console.log(`Failed citekeys:  ${failedCitekeys.join(", ")}`);
   }
+}
+
+function shouldSyncEntry(
+  entry: PaperEntry,
+  registry: ProcessedRegistry,
+  processedKeys: Set<string>,
+  options: { pendingOnly: boolean; incompleteOnly: boolean }
+): boolean {
+  if (options.pendingOnly) {
+    return !processedKeys.has(entry.citekey);
+  }
+
+  if (!options.incompleteOnly) {
+    return true;
+  }
+
+  const previous = registry[entry.citekey];
+  const paths = getPaperPaths(entry);
+  return (
+    !previous ||
+    !existsSync(paths.referenceNotePath) ||
+    !existsSync(paths.bodyNotePath) ||
+    previous.bodyStatus !== "converted"
+  );
 }
 
 async function cmdProcess(args: string[]): Promise<void> {
@@ -222,7 +255,7 @@ function parseLimit(args: string[]): number | undefined {
 
   const value = Number(args[index + 1]);
   if (!Number.isInteger(value) || value < 1) {
-    fail("Usage: bun run src/index.ts sync [--limit <count>] [--pending-only]");
+    fail("Usage: bun run src/index.ts sync [--limit <count>] [--pending-only] [--incomplete-only]");
   }
   return value;
 }
@@ -233,7 +266,7 @@ function parseDelayMs(args: string[]): number {
 
   const value = Number(args[index + 1]);
   if (!Number.isInteger(value) || value < 1) {
-    fail("Usage: bun run src/index.ts sync [--limit <count>] [--delay-ms <milliseconds>] [--pending-only]");
+    fail("Usage: bun run src/index.ts sync [--limit <count>] [--delay-ms <milliseconds>] [--pending-only] [--incomplete-only]");
   }
   return value;
 }
@@ -252,6 +285,8 @@ Usage:
   bun run src/index.ts sync                 Create/update all papers from Drive
   bun run src/index.ts sync --limit <count> Sync only the first N entries
   bun run src/index.ts sync --pending-only  Sync only entries missing from the registry
+  bun run src/index.ts sync --incomplete-only
+                                         Sync entries missing metadata/body, or retry missing/failed PDF bodies
   bun run src/index.ts sync --delay-ms 5000 Sync all entries with a delay between papers
   bun run src/index.ts migrate-folders      Move legacy paper folders into library folders
   bun run src/index.ts migrate-folders --dry-run

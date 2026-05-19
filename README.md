@@ -1,180 +1,349 @@
 # paperpile-obsidian
 
-Automated Paperpile -> Obsidian PKM integration. When a new paper is added to Paperpile, this workflow stores paper material in separate library folders:
+Paperpile に保存した論文を、Obsidian で読める Markdown ライブラリとして整理するための同期ツールです。
 
-| File | Contents |
-|------|----------|
-| `Papers/References/Acemoglu2019-br.md` | Reference note — YAML metadata, abstract, BibTeX, wikilinks |
-| `Papers/Bodies/Acemoglu2019-br_body.md` | Full-text PDF converted to Markdown via markitdown |
-| `Papers/Summaries/Acemoglu2019-br_summary.md` | User-created paper notes and summaries |
+このツールは Paperpile の Google Drive 同期データを読み取り、論文ごとに次のファイルを作ります。
 
-Reference and body notes keep citekey-based Obsidian wikilinks, so notes remain navigable even though they are no longer stored in one folder per paper.
+| 保存先 | 内容 |
+| --- | --- |
+| `paperpile-data/References/<citekey>.md` | 論文メタデータ、Abstract、BibTeX、関連リンク |
+| `paperpile-data/Bodies/<citekey>_body.md` | PDF本文を Markdown に変換したもの |
+| `paperpile-data/Summaries/<citekey>_summary.md` | 要約や読書メモ用の出力先 |
 
-## Data Privacy
+`<citekey>` は Paperpile の citation key です。Reference、Body、Summary は citekey ベースの Obsidian wikilink でつながるため、ファイルを別フォルダに分けても行き来できます。
 
-This repository is intended to contain the sync tool, configuration defaults, and fictional examples only. Your actual Paperpile/Obsidian library data should stay outside Git.
+## まず知ること
 
-The generated `Papers/` or local `paperpile-data/` folders may contain copyrighted PDF text, personal notes, private reading history, and research interests. They are ignored by `.gitignore` and should not be committed.
+このリポジトリには、同期ツール本体と設定例だけを入れる想定です。同期で作られる `paperpile-data/` や `Papers/` には、PDF本文、個人メモ、読書履歴、研究関心が含まれるため Git にコミットしないでください。
 
-Use `OBSIDIAN_VAULT_PATH` in `.env` to point the workflow at your own Obsidian vault, preferably outside this repository. The `examples/` directory contains fictional sample notes that show the expected output layout without exposing a real paper library.
+`.gitignore` では次を除外しています。
 
-## How It Works
+- `.env`
+- `.venv/`
+- `paperpile-data/`
+- `/Papers/`
+- `*.pdf`
 
-A polling daemon checks Paperpile's Google Drive BibTeX file every 15 minutes, detects new citekeys, and runs the pipeline:
+## 必要なもの
 
-```
-Google Drive (paperpile.bib + PDFs)
-  -> Parse BibTeX metadata
-  -> Download PDF -> markitdown -> body.md
-  -> Write reference and body notes to Obsidian vault
-  -> Mark as processed
-```
+- Paperpile
+- Paperpile の Google Drive sync
+- Google Drive API の OAuth2 credentials
+- Bun
+- Python 3
+- Obsidian
 
-## Setup
+PDF本文の Markdown 変換には `markitdown` を使います。このプロジェクトでは、システム全体の Python 環境ではなく、リポジトリ内の `.venv` に専用環境を作ることを推奨します。
 
-### 1. Install dependencies
+## 初回セットアップ
+
+### 1. JavaScript 依存関係を入れる
 
 ```bash
 bun install
-pip3 install markitdown[all]
 ```
 
-### 2. Google Drive API credentials
+### 2. PDF変換環境を作る
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a project, enable the **Google Drive API**
-3. Create **OAuth2 credentials** (Desktop app type)
-4. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`
-5. Run the OAuth setup script to get a refresh token:
-   ```bash
-   bun run oauth
-   ```
+```bash
+./tools/install-markitdown.sh
+```
 
-### 3. Configure `.env`
+このコマンドは `.venv` を作り、`markitdown[all]` と必要な Python 依存関係を入れます。Apple Silicon Mac で起きやすい NumPy の architecture mismatch を避けるため、プロジェクト専用環境を使います。
+
+### 3. `.env` を作る
 
 ```bash
 cp .env.example .env
-# Fill in all required values
 ```
 
-Required values:
-- `OBSIDIAN_VAULT_PATH` — absolute path to your Obsidian vault
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`
-- `DRIVE_PAPERPILE_FOLDER_ID` — find in Paperpile settings -> Google Drive sync
-- `DRIVE_BIB_FILE_ID` — open `paperpile.bib` in Google Drive, copy ID from URL
+最低限、次を設定します。
 
-### 4. Verify setup
+```env
+OBSIDIAN_VAULT_PATH=/absolute/path/to/your/vault
+OBSIDIAN_PAPERS_FOLDER=paperpile-data
+MARKITDOWN_BIN=/absolute/path/to/this/repo/.venv/bin/markitdown
 
-```bash
-bun run src/index.ts status
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REFRESH_TOKEN=...
+
+DRIVE_PAPERPILE_FOLDER_ID=...
+DRIVE_BIB_FILE_ID=...
 ```
 
-### 5. Run
+このリポジトリ内にデータを置く場合の例:
+
+```env
+OBSIDIAN_VAULT_PATH=/Users/you/Documents/GitHub/paperpile-obsidian
+OBSIDIAN_PAPERS_FOLDER=paperpile-data
+MARKITDOWN_BIN=/Users/you/Documents/GitHub/paperpile-obsidian/.venv/bin/markitdown
+```
+
+別の Obsidian vault に保存したい場合は、`OBSIDIAN_VAULT_PATH` をその vault の絶対パスにします。
+
+### 4. Google Drive API を準備する
+
+1. Google Cloud Console でプロジェクトを作る
+2. Google Drive API を有効にする
+3. OAuth2 credentials を作る
+4. Application type は Desktop app を選ぶ
+5. `GOOGLE_CLIENT_ID` と `GOOGLE_CLIENT_SECRET` を `.env` に入れる
+6. refresh token を取得する
 
 ```bash
-# Process one paper by Paperpile citekey (good for testing)
+bun run oauth
+```
+
+表示される案内に従って認証し、得られた `GOOGLE_REFRESH_TOKEN` を `.env` に入れます。
+
+### 5. Paperpile 側の Drive ID を入れる
+
+`.env` に次を入れます。
+
+- `DRIVE_PAPERPILE_FOLDER_ID`: Paperpile の Google Drive sync フォルダID
+- `DRIVE_BIB_FILE_ID`: Google Drive 上の `paperpile.bib` のファイルID
+
+Google Drive のURLからIDをコピーできます。
+
+### 6. 設定を確認する
+
+```bash
+bun run status
+```
+
+Paperpile の総件数、処理済み件数、未処理件数が表示されれば準備完了です。
+
+## 使い方
+
+### 1本だけ試す
+
+```bash
+bun run src/index.ts process <citekey>
+```
+
+例:
+
+```bash
 bun run src/index.ts process Acemoglu2019-br
+```
 
-# Sync all Paperpile entries: create missing notes, update changed metadata/PDF bodies
+初回セットアップ直後は、まず1本だけ試すと設定ミスを見つけやすいです。
+
+### 未処理・未完成の論文だけ同期する
+
+```bash
+bun run src/index.ts sync --incomplete-only --limit 100
+```
+
+通常運用ではこのコマンドを推奨します。対象になるのは次の論文です。
+
+- まだ metadata がない論文
+- まだ PDF body がない論文
+- 以前はPDFがなく、後からPaperpileにPDFが添付された論文
+- PDF変換が過去に失敗した論文
+
+後からPDFをPaperpileに添付した場合も、このコマンドで再チェックされ、PDF本文が Markdown として保存されます。
+
+### すべての論文を同期する
+
+```bash
 bun run sync
-
-# Sync all entries gently, waiting between papers to reduce Google Drive API load
-bun run src/index.ts sync --delay-ms 5000
-
-# Sync only the first N entries for a small test run
-bun run src/index.ts sync --limit 10
-
-# Move legacy `Papers/<citekey>/` folders into the current library layout
-bun run src/index.ts migrate-folders --dry-run
-bun run src/index.ts migrate-folders
-
-# Start the polling daemon
-bun run src/index.ts daemon
 ```
 
-### 6. Summarize papers with the local Codex skill
+全件を確認するため、大きいライブラリでは時間がかかります。通常は `--incomplete-only` を使ってください。
 
-This repository includes a local Codex skill for structured paper summaries:
+### 件数を絞って同期する
 
+```bash
+bun run src/index.ts sync --incomplete-only --limit 20
 ```
+
+Google Drive API 負荷や実行時間を抑えたいときに使います。
+
+### 実行間隔を空ける
+
+```bash
+bun run src/index.ts sync --incomplete-only --limit 100 --delay-ms 5000
+```
+
+論文ごとに5秒待ちます。大量同期時にGoogle Drive APIへのアクセスを少し穏やかにできます。
+
+## 自動実行
+
+この環境では Codex app の automation により、次の定期実行を設定しています。
+
+| 項目 | 内容 |
+| --- | --- |
+| 名前 | `Paperpile incomplete sync` |
+| automation id | `paperpile-incomplete-sync` |
+| 時刻 | 毎日 0:00 と 12:00 |
+| 実行内容 | `npx --yes bun run src/index.ts sync --incomplete-only --limit 100` |
+
+この定期実行により、metadata や PDF body がまだない論文が1回最大100件ずつ取り込まれます。PDFが後から添付された論文も、以前の本文状態が `missing` または `failed` なら再処理されます。
+
+手動で同じ処理を走らせる場合:
+
+```bash
+npx --yes bun run src/index.ts sync --incomplete-only --limit 100
+```
+
+## 出力ファイルの見方
+
+### Reference note
+
+`paperpile-data/References/<citekey>.md`
+
+主に次を含みます。
+
+- YAML metadata
+- title, authors, year, venue
+- abstract
+- DOI やURL
+- BibTeX
+- Body/Summary への wikilink
+
+### Body note
+
+`paperpile-data/Bodies/<citekey>_body.md`
+
+PDF本文を Markdown に変換したファイルです。変換にはまず `markitdown` を使い、失敗した場合は `pypdf` fallback を使います。
+
+### Summary note
+
+`paperpile-data/Summaries/<citekey>_summary.md`
+
+要約や読書メモの保存先です。同期処理では空フォルダだけを作り、要約本文は自動では作りません。
+
+## 論文を要約する
+
+このリポジトリには、citekey から Reference/Body を探して構造化要約を作る Codex skill が入っています。
+
+```text
 .codex/skills/paper-summarizer/
 ```
 
-For Codex to discover it as a reusable skill, expose it from a configured skill root. A symlink keeps the skill local to this repository while making it discoverable:
+Codex から使えるようにするには、skill root に symlink を置きます。
 
 ```bash
+mkdir -p ~/.codex/skills
 ln -s "$(pwd)/.codex/skills/paper-summarizer" ~/.codex/skills/paper-summarizer
 ```
 
-Use it from Codex with a Paperpile citekey:
+使い方の例:
 
 ```text
 $paper-summarizer Acemoglu2019-br
 Acemoglu2019-br の本文を構造化要約して
 ```
 
-The skill is scoped to this Paperpile -> Obsidian workflow. It resolves the citekey against the configured Obsidian vault and reads:
+要約は通常 `paperpile-data/Summaries/<citekey>_summary.md` に保存されます。Body note がない場合は、metadata と abstract を使った要約になります。
 
-| File | Role |
-|------|------|
-| `Papers/References/Acemoglu2019-br.md` | Metadata, abstract, BibTeX, DOI, tags |
-| `Papers/Bodies/Acemoglu2019-br_body.md` | Main full-text evidence for the summary |
-| `Papers/Summaries/Acemoglu2019-br_summary.md` | Markdown output file for the structured summary |
+## よく使うコマンド
 
-The helper resolver can be run directly for debugging:
+| やりたいこと | コマンド |
+| --- | --- |
+| 状態を見る | `bun run status` |
+| 1本だけ処理する | `bun run src/index.ts process <citekey>` |
+| 未完成分だけ100件処理する | `bun run src/index.ts sync --incomplete-only --limit 100` |
+| 全件同期する | `bun run sync` |
+| テストを走らせる | `bun test` |
+| 開発用daemonを起動する | `bun run dev` |
+
+## トラブルシューティング
+
+### `markitdown` が見つからない
+
+`.env` の `MARKITDOWN_BIN` を確認します。
+
+```env
+MARKITDOWN_BIN=/absolute/path/to/paperpile-obsidian/.venv/bin/markitdown
+```
+
+次で確認できます。
 
 ```bash
-python3 .codex/skills/paper-summarizer/scripts/resolve_paper.py Acemoglu2019-br
+.venv/bin/markitdown --help
 ```
 
-The skill saves the generated Markdown summary to `Papers/Summaries/<citekey>_summary.md` by default. It does not search Google Scholar, generate new citation keys, or summarize arbitrary PDFs by default. It preserves the existing Paperpile citekey and uses the local converted body note as the source of truth. If no body note exists, it reports that the full text is unavailable and falls back to metadata/abstract-only summarization.
+### NumPy の architecture mismatch が出る
 
-If the Obsidian vault is outside Codex's writable workspace, Codex may need write approval before it can create or update the summary file. A sandbox failure usually appears as `Operation not permitted` even when normal macOS file permissions look correct.
-
-### 7. Auto-start on login (macOS)
+システムPythonに入った壊れた依存関係を使っている可能性があります。プロジェクト専用環境を作り直してください。
 
 ```bash
-cp config/launchd/com.paperpile-obsidian.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.paperpile-obsidian.plist
+rm -rf .venv
+./tools/install-markitdown.sh
 ```
 
-Logs at `~/.paperpile-obsidian/daemon.log`.
+### PDF body が作られない
 
-## Development
+まず未完成分だけ再同期します。
 
 ```bash
-bun test                              # Run unit tests
-bun --watch run src/index.ts daemon   # Dev mode with hot reload
+bun run src/index.ts sync --incomplete-only --limit 100
 ```
 
-## Project Structure
+Paperpile にPDFがない場合は、Body note に「PDFを取得または変換できなかった」旨の warning が書かれます。後からPDFをPaperpileに添付すれば、次回の `--incomplete-only` 実行で再処理されます。
 
+### Google Drive 認証で失敗する
+
+`.env` の次を確認します。
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REFRESH_TOKEN`
+- `DRIVE_PAPERPILE_FOLDER_ID`
+- `DRIVE_BIB_FILE_ID`
+
+refresh token を取り直す場合:
+
+```bash
+bun run oauth
 ```
-README.md             Setup and usage guide
-package.json          Bun commands and dependencies
-bun.lock              Locked dependency versions
-tsconfig.json         TypeScript compiler settings
-src/
-  index.ts           CLI entry point
-  cli.ts             CLI command dispatcher
-  pipeline.ts        Single-paper processing orchestrator
-  config.ts          Config loading and validation
-  types.ts           TypeScript interfaces
-  bibtex/            BibTeX parsing and processed-entry registry
-  drive/             Google Drive API client and Paperpile sync
-  pdf/               PDF to Markdown conversion (markitdown + fallback)
-  obsidian/          Note builder and vault writer
-  daemon/            Polling loop
-config/
-  defaults.json      App defaults overridden by .env values
-  launchd/           macOS auto-start config
-tools/
-  setup-google-oauth.ts   One-time OAuth2 token setup
-  pdf_fallback.py         pypdf fallback converter
-  install-markitdown.sh   markitdown installation helper
-examples/
-  Papers/                 Fictional sample Obsidian output, safe to commit
-.codex/
-  skills/
-    paper-summarizer/     Local citekey-based paper summary skill
+
+### Codex が summary ファイルを書けない
+
+Obsidian vault が Codex の書き込み許可範囲外にあると、通常のmacOS権限が正しくても `Operation not permitted` になることがあります。その場合はCodex側で書き込み承認が必要です。
+
+## 古いフォルダ構成から移行する
+
+以前の `Papers/<citekey>/` 形式から、現在の `References/`、`Bodies/`、`Summaries/` 形式へ移す場合:
+
+```bash
+bun run src/index.ts migrate-folders --dry-run
+bun run src/index.ts migrate-folders
+```
+
+まず `--dry-run` で移動予定を確認してください。
+
+## 開発者向けメモ
+
+通常利用ではこの節を読む必要はありません。
+
+```text
+src/index.ts              CLI entry point
+src/cli.ts                CLI command dispatcher
+src/config.ts             .env と defaults の読み込み
+src/bibtex/               BibTeX parser と processed registry
+src/drive/                Google Drive API client
+src/pdf/                  PDF -> Markdown 変換
+src/obsidian/             Obsidian note writer
+src/daemon/               polling daemon
+tools/setup-google-oauth.ts
+tools/install-markitdown.sh
+tools/pdf_fallback.py
+config/defaults.json
+config/launchd/
+```
+
+型チェック:
+
+```bash
+./node_modules/.bin/tsc --noEmit
+```
+
+テスト:
+
+```bash
+bun test
 ```

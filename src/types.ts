@@ -8,6 +8,8 @@ export interface PaperEntry {
   doi?: string;
   abstract?: string;
   tags?: string[];
+  paperpileFolders?: string[];
+  paperpileLabels?: string[];
   url?: string;
   pdfDriveId?: string;   // Google Drive file ID for the PDF (resolved during processing)
   rawBibtex: string;
@@ -31,6 +33,8 @@ export interface AppConfig {
   vaultPath: string;
   drivePaperpileFolderId: string;
   driveBibFileId: string;
+  driveJsonFileId?: string;
+  paperpileJsonPath?: string;
   pollIntervalMs: number;
   obsidianPapersFolder: string;
   registryPath: string;

@@ -13,6 +13,8 @@ const envSchema = z.object({
   GOOGLE_REFRESH_TOKEN: z.string().min(1),
   DRIVE_PAPERPILE_FOLDER_ID: z.string().min(1),
   DRIVE_BIB_FILE_ID: z.string().min(1),
+  DRIVE_JSON_FILE_ID: z.string().optional(),
+  PAPERPILE_JSON_PATH: z.string().optional(),
   POLL_INTERVAL_MS: z.string().optional(),
   REGISTRY_PATH: z.string().optional(),
   OBSIDIAN_PAPERS_FOLDER: z.string().optional(),
@@ -45,6 +47,8 @@ export function loadConfig(): AppConfig {
     vaultPath: expandTilde(env.OBSIDIAN_VAULT_PATH),
     drivePaperpileFolderId: env.DRIVE_PAPERPILE_FOLDER_ID,
     driveBibFileId: env.DRIVE_BIB_FILE_ID,
+    driveJsonFileId: env.DRIVE_JSON_FILE_ID,
+    paperpileJsonPath: env.PAPERPILE_JSON_PATH ? expandTilde(env.PAPERPILE_JSON_PATH) : undefined,
     pollIntervalMs: env.POLL_INTERVAL_MS
       ? parseInt(env.POLL_INTERVAL_MS, 10)
       : configFileDefaults.pollIntervalMs,

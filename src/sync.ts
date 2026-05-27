@@ -22,7 +22,7 @@ export interface SyncSummary {
 export async function syncPaper(entry: PaperEntry): Promise<keyof SyncSummary> {
   const previous = getEntry(entry.citekey);
   const paths = getPaperPaths(entry);
-  const bibtexHash = hashString(entry.rawBibtex);
+  const bibtexHash = hashString(metadataFingerprint(entry));
   const pdfFile = await resolvePdfFile(entry);
 
   const referenceExists = existsSync(paths.referenceNotePath);
@@ -131,4 +131,12 @@ async function writeSyncedBody(
 
 function hashString(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function metadataFingerprint(entry: PaperEntry): string {
+  return JSON.stringify({
+    rawBibtex: entry.rawBibtex,
+    paperpileFolders: entry.paperpileFolders ?? [],
+    paperpileLabels: entry.paperpileLabels ?? [],
+  });
 }

@@ -13,6 +13,20 @@ export async function fetchBibFile(): Promise<string> {
   return text;
 }
 
+export async function fetchJsonExport(): Promise<string | null> {
+  if (config.paperpileJsonPath) {
+    console.log(`[paperpile] Reading JSON export: ${config.paperpileJsonPath}`);
+    return Bun.file(config.paperpileJsonPath).text();
+  }
+
+  if (!config.driveJsonFileId) return null;
+
+  console.log("[drive] Downloading Paperpile JSON export...");
+  const text = await downloadFileAsText(config.driveJsonFileId);
+  console.log(`[drive] Downloaded Paperpile JSON (${text.length} chars)`);
+  return text;
+}
+
 /**
  * Download a paper's PDF from Google Drive to a temp file.
  * Returns the local path where the PDF was saved.

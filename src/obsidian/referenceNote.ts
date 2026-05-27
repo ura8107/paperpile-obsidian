@@ -22,6 +22,8 @@ export function buildReferenceNote(entry: PaperEntry): string {
     abstract: entry.abstract,
     venue: venue || "N/A",
     tags: entry.tags ?? [],
+    paperpileFolders: entry.paperpileFolders ?? [],
+    paperpileLabels: entry.paperpileLabels ?? [],
     rawBibtex: entry.rawBibtex,
     today,
   });

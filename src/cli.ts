@@ -1,8 +1,9 @@
 import { config } from "./config.ts";
 import { existsSync } from "node:fs";
 import { loadRegistry, getProcessedKeys, getAllEntries } from "./bibtex/registry.ts";
-import { fetchBibFile } from "./drive/paperpileSync.ts";
+import { fetchBibFile, fetchJsonExport } from "./drive/paperpileSync.ts";
 import { parseBibTeX, diffNewEntries } from "./bibtex/parser.ts";
+import { mergePaperpileJsonExport } from "./paperpile/jsonExport.ts";
 import { processPaper } from "./pipeline.ts";
 import { startPoller } from "./daemon/poller.ts";
 import { createSyncSummary, syncPaper } from "./sync.ts";
@@ -57,8 +58,7 @@ async function cmdSync(args: string[]): Promise<void> {
   const delayMs = parseDelayMs(args);
   const pendingOnly = args.includes("--pending-only");
   const incompleteOnly = args.includes("--incomplete-only");
-  const bibRaw = await fetchBibFile();
-  const allEntries = parseBibTeX(bibRaw);
+  const allEntries = await getPaperpileEntries();
   const registry = getAllEntries();
   const processedKeys = getProcessedKeys();
   const candidateEntries = allEntries.filter((entry) =>
@@ -169,8 +169,7 @@ async function processDriveEntry(args: string[]): Promise<void> {
     fail("Usage: bun run src/index.ts process <citekey>");
   }
 
-  const bibRaw = await fetchBibFile();
-  const entries = parseBibTeX(bibRaw);
+  const entries = await getPaperpileEntries();
   const entry = entries.find((e) => e.citekey === citekey);
 
   if (!entry) {
@@ -189,7 +188,7 @@ async function cmdStatus(): Promise<void> {
   await loadRegistry();
 
   const registry = getAllEntries();
-  const paperpileEntries = await getPaperpileEntries();
+  const paperpileEntries = await getPaperpileEntries({ allowFailure: true });
   const totalCount = paperpileEntries.length;
   const processedKeys = getProcessedKeys();
   const paperpileKeys = new Set(paperpileEntries.map((entry) => entry.citekey));
@@ -221,13 +220,19 @@ async function cmdStatus(): Promise<void> {
   printRecentlyProcessed(registry);
 }
 
-async function getPaperpileEntries() {
+async function getPaperpileEntries(options: { allowFailure?: boolean } = {}) {
   try {
     const bibRaw = await fetchBibFile();
-    return parseBibTeX(bibRaw);
+    const entries = parseBibTeX(bibRaw);
+    const jsonRaw = await fetchJsonExport();
+    if (!jsonRaw) return entries;
+    return mergePaperpileJsonExport(entries, jsonRaw);
   } catch (err) {
-    console.warn(`Could not fetch BibTeX from Drive: ${(err as Error).message}`);
-    return [];
+    if (options.allowFailure) {
+      console.warn(`Could not fetch Paperpile metadata: ${(err as Error).message}`);
+      return [];
+    }
+    throw err;
   }
 }
 

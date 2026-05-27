@@ -11,7 +11,11 @@ authors:
   - paper
   - read/unread
 {{#each tags}}  - {{this}}
-{{/each}}date-added: {{today}}
+{{/each}}{{#if paperpileFolders.length}}paperpile-folders:
+{{#each paperpileFolders}}  - "{{this}}"
+{{/each}}{{/if}}{{#if paperpileLabels.length}}paperpile-labels:
+{{#each paperpileLabels}}  - "{{this}}"
+{{/each}}{{/if}}date-added: {{today}}
 ---
 
 # {{title}}

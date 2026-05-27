@@ -1,6 +1,7 @@
 import { config } from "../config.ts";
-import { fetchBibFile } from "../drive/paperpileSync.ts";
+import { fetchBibFile, fetchJsonExport } from "../drive/paperpileSync.ts";
 import { parseBibTeX, diffNewEntries } from "../bibtex/parser.ts";
+import { mergePaperpileJsonExport } from "../paperpile/jsonExport.ts";
 import { loadRegistry, getProcessedKeys } from "../bibtex/registry.ts";
 import { processPaper } from "../pipeline.ts";
 import type { PaperEntry } from "../types.ts";
@@ -18,7 +19,11 @@ export async function tick(): Promise<void> {
     await loadRegistry();
 
     const bibRaw = await fetchBibFile();
-    const allEntries = parseBibTeX(bibRaw);
+    let allEntries = parseBibTeX(bibRaw);
+    const jsonRaw = await fetchJsonExport();
+    if (jsonRaw) {
+      allEntries = mergePaperpileJsonExport(allEntries, jsonRaw);
+    }
     console.log(`[poller] Found ${allEntries.length} total entries in BibTeX`);
 
     const processedKeys = getProcessedKeys();

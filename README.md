@@ -318,7 +318,7 @@ rm -rf .venv
 First, rerun the incomplete-only sync:
 
 ```bash
-bun run src/index.ts sync --incomplete-only --limit 100
+bun run src/index.ts sync --incomplete-only
 ```
 
 If Paperpile does not have a PDF, the Body note records a warning that the PDF could not be fetched or converted. Attach the PDF in Paperpile, then the next `--incomplete-only` run will retry it.

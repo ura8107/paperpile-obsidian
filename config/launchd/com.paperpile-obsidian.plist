@@ -8,22 +8,22 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/mtsr95/.bun/bin/bun</string>
+    <string>/opt/homebrew/bin/bun</string>
     <string>run</string>
-    <string>/Users/mtsr95/Documents/GitHub/paperpile-obsidian/src/index.ts</string>
+    <string>/Users/yukimatsuura2/Documents/GitHub/paperpile-obsidian/src/index.ts</string>
     <string>daemon</string>
   </array>
 
   <key>EnvironmentVariables</key>
   <dict>
-    <key>HOME</key>
-    <string>/Users/mtsr95</string>
-    <key>PATH</key>
-    <string>/Users/mtsr95/.bun/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin</string>
+  <key>HOME</key>
+    <string>/Users/yukimatsuura2</string>
+  <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin</string>
   </dict>
 
   <key>WorkingDirectory</key>
-  <string>/Users/mtsr95/Documents/GitHub/paperpile-obsidian</string>
+  <string>/Users/yukimatsuura2/Documents/GitHub/paperpile-obsidian</string>
 
   <key>RunAtLoad</key>
   <true/>
@@ -32,10 +32,10 @@
   <true/>
 
   <key>StandardOutPath</key>
-  <string>/Users/mtsr95/.paperpile-obsidian/daemon.log</string>
+  <string>/Users/yukimatsuura2/.paperpile-obsidian/daemon.log</string>
 
   <key>StandardErrorPath</key>
-  <string>/Users/mtsr95/.paperpile-obsidian/daemon.error.log</string>
+  <string>/Users/yukimatsuura2/.paperpile-obsidian/daemon.error.log</string>
 
   <!-- Restart after 30s if it crashes -->
   <key>ThrottleInterval</key>

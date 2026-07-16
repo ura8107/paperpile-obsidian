@@ -1,7 +1,7 @@
-import { convertWithMarkitdown, convertWithFallback } from "./markitdown.ts";
+import { convertWithMarkitdown, convertWithFallback, convertWithOcrFallback } from "./markitdown.ts";
 
 /**
- * Convert a PDF to Markdown, trying markitdown first then falling back to pypdf.
+ * Convert a PDF to Markdown, trying text-layer extraction before OCR fallback.
  * Returns the markdown string, or null if both methods fail.
  */
 export async function pdfToMarkdown(pdfPath: string): Promise<string | null> {
@@ -24,7 +24,18 @@ export async function pdfToMarkdown(pdfPath: string): Promise<string | null> {
       return md;
     }
   } catch (err) {
-    console.error(`[pdf] Fallback also failed: ${(err as Error).message}`);
+    console.warn(`[pdf] Fallback also failed: ${(err as Error).message}. Trying OCR fallback...`);
+  }
+
+  // OCR fallback for scanned/image-only PDFs
+  try {
+    const md = await convertWithOcrFallback(pdfPath);
+    if (md.trim().length > 100) {
+      console.log(`[pdf] Converted via OCR fallback (${md.length} chars)`);
+      return md;
+    }
+  } catch (err) {
+    console.error(`[pdf] OCR fallback also failed: ${(err as Error).message}`);
   }
 
   return null;

@@ -35,6 +35,46 @@ The `.gitignore` excludes:
 
 PDF body conversion uses `markitdown`. This project recommends creating a dedicated `.venv` inside the repository instead of using the system-wide Python environment.
 
+## Guided Setup with an AI Assistant
+
+The fastest way to set this up on a new machine is to let an AI coding assistant
+(Claude Code, Codex, or similar) drive it. Open this repository in the assistant
+and say:
+
+```text
+Set up paperpile-obsidian on this machine. Follow docs/SETUP.md.
+```
+
+Claude Code and Codex users can also invoke the bundled skill by name:
+
+```text
+$paperpile-setup
+```
+
+The assistant reads [`docs/SETUP.md`](docs/SETUP.md) and runs the setup
+interactively. It discovers what it can instead of asking you to type it: your
+Obsidian vaults, the `bun` / `python3` / `markitdown` locations, the OAuth client
+file you downloaded, and — through the Drive API — the Paperpile folder and
+`paperpile.bib` file IDs. In practice you only have to:
+
+1. Click through the Google Cloud Console once to create an OAuth client.
+2. Approve the Google consent screen in your browser.
+3. Pick which Obsidian vault to use, if you have more than one.
+
+Every step is also a plain command, so you can run the same setup by hand — see
+[Initial Setup](#initial-setup) below and the command reference in
+[`docs/SETUP.md`](docs/SETUP.md).
+
+To check an existing installation at any time:
+
+```bash
+bun run doctor
+```
+
+`doctor` verifies the toolchain, `.env`, the vault, `markitdown`, the Google
+token, the Drive IDs, and the parsed Paperpile entry count — and prints a fix
+command for anything that fails.
+
 ## Initial Setup
 
 ### 1. Install JavaScript Dependencies
@@ -54,8 +94,18 @@ This creates `.venv` and installs `markitdown[all]` plus the required Python dep
 ### 3. Create `.env`
 
 ```bash
-cp .env.example .env
+bun run setup:env --vault /absolute/path/to/your/vault --papers-folder paperpile-data
 ```
+
+This creates `.env` from `.env.example`, writes the vault settings, and fills in
+`MARKITDOWN_BIN` from the `.venv` created in step 2. The previous file is backed
+up to `.env.bak`. To see the vaults it can find for you:
+
+```bash
+bun run setup:detect
+```
+
+You can also copy the template and edit it by hand (`cp .env.example .env`).
 
 At minimum, set:
 
@@ -92,26 +142,57 @@ To store notes in another Obsidian vault, set `OBSIDIAN_VAULT_PATH` to the absol
 2. Enable the Google Drive API.
 3. Create OAuth2 credentials.
 4. Choose Desktop app as the application type.
-5. Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to `.env`.
+5. Download the credentials JSON, then import it:
+
+```bash
+bun run setup:google-client
+```
+
+This finds `client_secret_*.json` in `~/Downloads` (or takes a path argument)
+and writes `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` into `.env`, so you
+never have to copy them by hand.
+
 6. Get a refresh token.
 
 ```bash
 bun run oauth
 ```
 
-Follow the displayed authentication instructions, then add the resulting `GOOGLE_REFRESH_TOKEN` to `.env`.
+This prints and opens the Google authorization URL and writes the resulting
+`GOOGLE_REFRESH_TOKEN` into `.env` for you. Use `bun run oauth --print-only` if
+you would rather copy it yourself.
 
 ### 5. Add Paperpile Drive IDs
 
-Add these values to `.env`:
+```bash
+bun run setup:drive-ids --write-env
+```
+
+This searches your Drive for `paperpile.bib` and for folders named `Paperpile`,
+scores the candidates by what they contain (`paperpile.bib`, an `All Papers`
+subfolder, PDFs, a JSON export), and writes the IDs into `.env`:
 
 - `DRIVE_PAPERPILE_FOLDER_ID`: the ID of the Paperpile Google Drive sync folder
 - `DRIVE_BIB_FILE_ID`: the file ID of `paperpile.bib` in Google Drive
 - `DRIVE_JSON_FILE_ID` or `PAPERPILE_JSON_PATH` (optional): a full-library Paperpile JSON export used to sync Paperpile folders and labels into Obsidian metadata
 
-You can copy these IDs from Google Drive URLs.
+Run it without `--write-env` to inspect the candidates first. If several folders
+look equally plausible, pick one and set it explicitly:
+
+```bash
+bun run setup:env --drive-folder-id <id> --drive-bib-id <id>
+```
+
+You can still copy these IDs from Google Drive URLs if you prefer.
 
 ### 6. Check the Configuration
+
+```bash
+bun run doctor
+```
+
+`doctor` checks every requirement in order and prints a fix command for each
+failure. When it is clean:
 
 ```bash
 bun run status
@@ -193,6 +274,20 @@ To run the same sync manually:
 bun run src/index.ts sync --incomplete-only
 ```
 
+### Scheduled Sync on macOS
+
+To run the polling daemon in the background instead, generate a launchd agent
+with this machine's real paths:
+
+```bash
+bun run setup:launchd            # preview the generated plist
+bun run setup:launchd --install  # write to ~/Library/LaunchAgents and load it
+bun run setup:launchd --uninstall
+```
+
+Logs are written to `~/.paperpile-obsidian/daemon.log`. On Linux, schedule
+`bun run src/index.ts sync --incomplete-only` with cron or a systemd timer.
+
 ## Output Files
 
 ### Reference Note
@@ -261,12 +356,15 @@ This repository includes a Codex skill that resolves a citekey to the correspond
 .codex/skills/paper-summarizer/
 ```
 
-To make the skill available from Codex, add a symlink from a configured skill root:
+To make the skill available from Codex, link it into a configured skill root:
 
 ```bash
-mkdir -p ~/.codex/skills
-ln -s "$(pwd)/.codex/skills/paper-summarizer" ~/.codex/skills/paper-summarizer
+bun run setup:skills          # symlinks this repo's skills into ~/.codex/skills
+bun run setup:skills --status
 ```
+
+Claude Code loads `.claude/skills/` from this repository automatically, so no
+linking is needed there.
 
 Example:
 
@@ -281,6 +379,8 @@ Summaries are normally saved to `paperpile-data/Summaries/<citekey>_summary.md`.
 
 | Task | Command |
 | --- | --- |
+| Detect setup state | `bun run setup:detect` |
+| Verify configuration | `bun run doctor` |
 | Show status | `bun run status` |
 | Process one paper | `bun run src/index.ts process <citekey>` |
 | Process all incomplete papers | `bun run src/index.ts sync --incomplete-only` |
@@ -289,6 +389,15 @@ Summaries are normally saved to `paperpile-data/Summaries/<citekey>_summary.md`.
 | Start the development daemon | `bun run dev` |
 
 ## Troubleshooting
+
+Start here:
+
+```bash
+bun run doctor
+```
+
+It reports which check fails and the command that fixes it. The sections below
+cover the most common cases in more detail.
 
 ### `markitdown` Is Not Found
 
@@ -370,8 +479,16 @@ src/daemon/               polling daemon
 tools/setup-google-oauth.ts
 tools/install-markitdown.sh
 tools/pdf_fallback.py
+tools/setup/detect.ts     machine/vault/credential discovery
+tools/setup/env.ts        .env writer
+tools/setup/google-client.ts
+tools/setup/drive-ids.ts  Paperpile Drive ID discovery
+tools/setup/doctor.ts     end-to-end configuration check
+tools/setup/launchd.ts    macOS scheduled sync generator
+tools/setup/skills.ts     skill symlinks
 config/defaults.json
-config/launchd/
+config/launchd/           launchd plist template
+docs/SETUP.md             guided setup runbook for AI assistants
 ```
 
 Type check:

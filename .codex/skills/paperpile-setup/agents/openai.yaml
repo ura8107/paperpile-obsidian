@@ -1,0 +1,6 @@
+interface:
+  display_name: "Paperpile Setup"
+  short_description: "Guided setup for the Paperpile to Obsidian sync"
+  default_prompt: "Use $paperpile-setup to configure paperpile-obsidian on this machine."
+policy:
+  allow_implicit_invocation: true

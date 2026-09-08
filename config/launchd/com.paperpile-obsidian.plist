@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template. Placeholders are filled in by `bun run setup:launchd`, which writes
+  the result to ~/Library/LaunchAgents/com.paperpile-obsidian.plist.
+  Do not edit the installed copy here; re-run the generator instead.
+-->
 <plist version="1.0">
 <dict>
   <key>Label</key>
@@ -8,22 +13,22 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/opt/homebrew/bin/bun</string>
+    <string>__BUN_BIN__</string>
     <string>run</string>
-    <string>/Users/yukimatsuura2/Documents/GitHub/paperpile-obsidian/src/index.ts</string>
+    <string>__REPO_ROOT__/src/index.ts</string>
     <string>daemon</string>
   </array>
 
   <key>EnvironmentVariables</key>
   <dict>
   <key>HOME</key>
-    <string>/Users/yukimatsuura2</string>
+    <string>__HOME__</string>
   <key>PATH</key>
-    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/sbin</string>
+    <string>__PATH__</string>
   </dict>
 
   <key>WorkingDirectory</key>
-  <string>/Users/yukimatsuura2/Documents/GitHub/paperpile-obsidian</string>
+  <string>__REPO_ROOT__</string>
 
   <key>RunAtLoad</key>
   <true/>
@@ -32,10 +37,10 @@
   <true/>
 
   <key>StandardOutPath</key>
-  <string>/Users/yukimatsuura2/.paperpile-obsidian/daemon.log</string>
+  <string>__LOG_DIR__/daemon.log</string>
 
   <key>StandardErrorPath</key>
-  <string>/Users/yukimatsuura2/.paperpile-obsidian/daemon.error.log</string>
+  <string>__LOG_DIR__/daemon.error.log</string>
 
   <!-- Restart after 30s if it crashes -->
   <key>ThrottleInterval</key>

@@ -9,7 +9,15 @@
     "status": "bun run src/index.ts status",
     "sync": "bun run src/index.ts sync",
     "oauth": "bun run tools/setup-google-oauth.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "setup": "bun run tools/setup/detect.ts",
+    "setup:detect": "bun run tools/setup/detect.ts",
+    "setup:env": "bun run tools/setup/env.ts",
+    "setup:google-client": "bun run tools/setup/google-client.ts",
+    "setup:drive-ids": "bun run tools/setup/drive-ids.ts",
+    "setup:launchd": "bun run tools/setup/launchd.ts",
+    "setup:skills": "bun run tools/setup/skills.ts",
+    "doctor": "bun run tools/setup/doctor.ts"
   },
   "dependencies": {
     "bibtex-parse": "^2.1.0",
